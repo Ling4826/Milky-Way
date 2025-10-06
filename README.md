@@ -1,5 +1,0 @@
-A map of the sky that uses an [azimuthal equidistant projection](https://github.com/mbostock/d3/wiki/Geo-Projections#azimuthalEquidistant) with star data. Longitudes and latitudes for the geo projection are obtained from [declination](http://en.wikipedia.org/wiki/Declination) and [right ascension](http://en.wikipedia.org/wiki/Right_ascension) respectively (longitude is also inverted, because, unlike the earth globe, the celestial sphere is seen from the inside).
-
-The boreal (northern) sky is shown at left, while the austral (southern) at right. Because right ascension is given in hours, both maps are divided in 24 slices. A circle is shown every 10 degrees of declination.
-
-Star size indicates [magnitude](http://en.wikipedia.org/wiki/Magnitude_(astronomy)). Bigger circles depict brighter stars.
