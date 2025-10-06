@@ -98,61 +98,88 @@
     .attr('x2', width / 2)
     .attr('y2', height / 2 - 60);
 
-  // Store star positions for fast lookup (kept for potential future use)
+  // Store star positions for fast lookup and compute distance from center
   var starPositions = [];
   d3.csv('stars.csv', function(data) {
+    var cx = width / 2, cy = height / 2;
     data.forEach(function(d) {
       var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
       var lon = (+d.RA_hour + +d.RA_min / 60 + +d.RA_sec / 3600) * (360 / 24);
       var coords = projection([lon, lat]);
-      if (coords) starPositions.push({x: coords[0], y: coords[1]});
+      if (coords) {
+        var dx = coords[0] - cx, dy = coords[1] - cy;
+        var distFromCenter = Math.sqrt(dx * dx + dy * dy);
+        starPositions.push({x: coords[0], y: coords[1], dist: distFromCenter});
+      }
     });
+    // (no circle gap helper — circle and line will draw over each other)
+
     // Set up mousemove handler after stars are loaded
     svg.on('mousemove', function() {
       var mouse = d3.mouse(this);
       var cx = width / 2, cy = height / 2;
+      // Find nearest star to mouse
+      var minDist = Infinity, nearest = null;
+      for (var i = 0; i < starPositions.length; i++) {
+        var p = starPositions[i];
+        var dmx = p.x - mouse[0], dmy = p.y - mouse[1];
+        var dmouse = Math.sqrt(dmx * dmx + dmy * dmy);
+        if (dmouse < minDist) {
+          minDist = dmouse;
+          nearest = p;
+        }
+      }
       // Calculate distance from mouse to center
       var dx = mouse[0] - cx, dy = mouse[1] - cy;
       var distToCenter = Math.sqrt(dx * dx + dy * dy);
-      // No upper limit for circle radius: let it grow relative to distance from center
+      // No upper limit for circle radius by default: let it grow relative to distance from center
       var minRadius = 2;
       var circleRadius = Math.max(minRadius, distToCenter);
-      yellowCircle
-        .attr('cx', cx)
-        .attr('cy', cy)
-        .attr('r', circleRadius);
-      // Make the yellow line extend from center through the mouse position to the edge of the SVG (no limit)
-      // Compute a far point along the same vector beyond the SVG bounds
-      if (distToCenter === 0) {
-        // mouse at center: draw a tiny line upwards
+      // Snap threshold (pixels). If the mouse is within this many pixels of a star, snap to it.
+      var snapThreshold = 8;
+      if (nearest && minDist <= snapThreshold) {
+        // Snap: set line end to star and circle radius to star's distance from center
         yellowLine
           .attr('x1', cx)
           .attr('y1', cy)
-          .attr('x2', cx)
-          .attr('y2', cy - 1);
+          .attr('x2', nearest.x)
+          .attr('y2', nearest.y);
+        var rstar = Math.max(minRadius, nearest.dist);
+        yellowCircle
+          .attr('cx', cx)
+          .attr('cy', cy)
+          .attr('r', rstar)
+          .attr('stroke-dasharray', null)
+          .attr('stroke-dashoffset', null);
       } else {
-        var scale = Math.max(width, height) * 2 / distToCenter; // large enough to go off-canvas
-        var farX = cx + dx * scale;
-        var farY = cy + dy * scale;
-        yellowLine
-          .attr('x1', cx)
-          .attr('y1', cy)
-          .attr('x2', farX)
-          .attr('y2', farY);
+        // Not snapping: unlimited/ray behavior
+        yellowCircle
+          .attr('cx', cx)
+          .attr('cy', cy)
+          .attr('r', circleRadius);
+        if (distToCenter === 0) {
+          // mouse at center: draw a tiny line upwards
+          yellowLine
+            .attr('x1', cx)
+            .attr('y1', cy)
+            .attr('x2', cx)
+            .attr('y2', cy - 1);
+        } else {
+          var scale = Math.max(width, height) * 2 / distToCenter; // large enough to go off-canvas
+          var farX = cx + dx * scale;
+          var farY = cy + dy * scale;
+          yellowLine
+            .attr('x1', cx)
+            .attr('y1', cy)
+            .attr('x2', farX)
+            .attr('y2', farY);
+          yellowCircle.attr('stroke-dasharray', null).attr('stroke-dashoffset', null);
+        }
       }
     });
   });
 
-  // Store star positions for fast lookup
-  var starPositions = [];
-  d3.csv('stars.csv', function(data) {
-    data.forEach(function(d) {
-      var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
-      var lon = (+d.RA_hour + +d.RA_min / 60 + +d.RA_sec / 3600) * (360 / 24);
-      var coords = projection([lon, lat]);
-      if (coords) starPositions.push({x: coords[0], y: coords[1]});
-    });
-  });
+  // (starPositions already populated above)
 
   // (mousemove handler moved inside d3.csv callback)
 
