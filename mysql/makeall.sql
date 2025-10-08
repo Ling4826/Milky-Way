@@ -1,0 +1,91 @@
+CREATE TABLE GalacticRegion (
+    Region_ID INT PRIMARY KEY AUTO_INCREMENT,
+    Name VARCHAR(100) NOT NULL,
+    Coordinates VARCHAR(100),
+    Type VARCHAR(50),
+    Size FLOAT, -- ขนาดสมมุติของ region (ถ้าจะแสดงขนาด)
+    Position_ID INT,
+    FOREIGN KEY (Position_ID) REFERENCES `position`(Position_ID)
+);
+
+CREATE TABLE SolarSystem (
+    System_ID INT PRIMARY KEY AUTO_INCREMENT,
+    Name VARCHAR(100) NOT NULL,
+    Region_ID INT,
+    Size FLOAT, -- ขนาดสมมุติของ solar system
+    Position_ID INT,
+    FOREIGN KEY (Region_ID) REFERENCES GalacticRegion(Region_ID),
+    FOREIGN KEY (Position_ID) REFERENCES `position`(Position_ID)
+);
+
+CREATE TABLE Star (
+    Star_ID INT PRIMARY KEY AUTO_INCREMENT,
+    Name VARCHAR(100) NOT NULL,
+    StarType VARCHAR(50),
+    Temperature FLOAT,
+    Mass FLOAT,
+    Distance FLOAT,
+    magnitude FLOAT, -- ความสว่าง
+    Position_ID INT,
+    FOREIGN KEY (Position_ID) REFERENCES `position`(Position_ID)
+);
+
+CREATE TABLE Planet (
+    Planet_ID INT PRIMARY KEY AUTO_INCREMENT,
+    Name VARCHAR(100) NOT NULL,
+    PlanetType VARCHAR(50),
+    OrbitalPeriod FLOAT,
+    Star_ID INT,
+    Diameter FLOAT, -- เพิ่มขนาดดาวเคราะห์
+    Position_ID INT,
+    FOREIGN KEY (Star_ID) REFERENCES Star(Star_ID),
+    FOREIGN KEY (Position_ID) REFERENCES `position`(Position_ID)
+);
+
+CREATE TABLE Moon (
+    Moon_ID INT PRIMARY KEY AUTO_INCREMENT,
+    Name VARCHAR(100) NOT NULL,
+    MoonDiameter FLOAT, -- มีขนาดแล้ว
+    Mass FLOAT, -- เติมมวลดาวบริวาร
+    Planet_ID INT,
+    OrbitalPeriod FLOAT,
+    Position_ID INT,
+    FOREIGN KEY (Planet_ID) REFERENCES Planet(Planet_ID),
+    FOREIGN KEY (Position_ID) REFERENCES `position`(Position_ID)
+);
+
+CREATE TABLE Comet (
+    Comet_ID INT PRIMARY KEY AUTO_INCREMENT,
+    System_ID INT,
+    Name VARCHAR(100),
+    Size FLOAT, -- ขนาดหัว/ความยาวหาง
+    magnitude FLOAT, -- ใส่ความสว่าง (ถ้าใช้ plot)
+    OrbitalPeriod FLOAT,
+    Position_ID INT,
+    FOREIGN KEY (System_ID) REFERENCES SolarSystem(System_ID),
+    FOREIGN KEY (Position_ID) REFERENCES `position`(Position_ID)
+);
+
+CREATE TABLE Blackhole (
+    Blackhole_ID INT PRIMARY KEY AUTO_INCREMENT,
+    Region_ID INT,
+    Name VARCHAR(100),
+    Type VARCHAR(50),
+    Mass FLOAT,   -- มวลเป็นหลักสำคัญ
+    Size FLOAT,   -- ขนาด event horizon
+    Position_ID INT,
+    FOREIGN KEY (Region_ID) REFERENCES GalacticRegion(Region_ID),
+    FOREIGN KEY (Position_ID) REFERENCES `position`(Position_ID)
+);
+
+CREATE TABLE Nebula (
+    Nebula_ID INT PRIMARY KEY AUTO_INCREMENT,
+    Region_ID INT,
+    Name VARCHAR(100),
+    Type VARCHAR(50),
+    Size FLOAT, -- ขนาดเมฆ/กลุ่มก๊าซ
+    magnitude FLOAT, -- ความสว่างของเนบิวลา (ถ้าต้อง plot)
+    Position_ID INT,
+    FOREIGN KEY (Region_ID) REFERENCES GalacticRegion(Region_ID),
+    FOREIGN KEY (Position_ID) REFERENCES `position`(Position_ID)
+);

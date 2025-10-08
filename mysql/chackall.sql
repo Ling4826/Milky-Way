@@ -1,0 +1,9 @@
+select * from blackhole ;
+select * from  comet ;
+select * from galacticregion  ;
+select * from  moon ;
+select * from nebula  ;
+select * from  planet ;
+select * from star  ;
+select * from  solarsystem ;
+select * from position ;
