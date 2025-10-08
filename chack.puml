@@ -1,0 +1,115 @@
+@startuml
+
+entity "Position" as position {
+    Position_ID : int <<PK>>
+    RA_hour : int
+    RA_minute : int
+    RA_second : float
+    dec_deg : int
+    dec_min : int
+    dec_sec : float
+}
+
+entity "GalacticRegion" as galacticregion {
+    Region_ID : int <<PK>>
+    Name : varchar
+    Coordinates : varchar
+    Type : varchar
+    Size : float
+    magnitude : float
+    Position_ID : int <<FK>>
+}
+
+entity "SolarSystem" as solarsystem {
+    System_ID : int <<PK>>
+    Name : varchar
+    Region_ID : int <<FK>>
+    Size : float
+    magnitude : float
+    Position_ID : int <<FK>>
+}
+
+entity "Star" as star {
+    Star_ID : int <<PK>>
+    Name : varchar
+    StarType : varchar
+    Temperature : float
+    Mass : float
+    Distance : float
+    magnitude : float
+    Position_ID : int <<FK>>
+}
+
+entity "Planet" as planet {
+    Planet_ID : int <<PK>>
+    Name : varchar
+    PlanetType : varchar
+    OrbitalPeriod : float
+    Star_ID : int <<FK>>
+    Diameter : float
+    magnitude : float
+    Position_ID : int <<FK>>
+}
+
+entity "Moon" as moon {
+    Moon_ID : int <<PK>>
+    Name : varchar
+    MoonDiameter : float
+    Mass : float
+    magnitude : float
+    Planet_ID : int <<FK>>
+    OrbitalPeriod : float
+    Position_ID : int <<FK>>
+}
+
+entity "Comet" as comet {
+    Comet_ID : int <<PK>>
+    System_ID : int <<FK>>
+    Name : varchar
+    Size : float
+    magnitude : float
+    OrbitalPeriod : float
+    Position_ID : int <<FK>>
+}
+
+entity "Blackhole" as blackhole {
+    Blackhole_ID : int <<PK>>
+    Region_ID : int <<FK>>
+    Name : varchar
+    Type : varchar
+    Mass : float
+    Size : float
+    magnitude : float
+    Position_ID : int <<FK>>
+}
+
+entity "Nebula" as nebula {
+    Nebula_ID : int <<PK>>
+    Region_ID : int <<FK>>
+    Name : varchar
+    Type : varchar
+    Size : float
+    magnitude : float
+    Position_ID : int <<FK>>
+}
+
+galacticregion --o{ solarsystem : "1:N"
+galacticregion --o{ blackhole : "1:N"
+galacticregion --o{ nebula : "1:N"
+
+solarsystem --o{ star : "1:N"
+solarsystem --o{ comet : "1:N"
+
+star --o{ planet : "1:N"
+planet --o{ moon : "1:N"
+
+position ||..o{ galacticregion
+position ||..o{ solarsystem
+position ||..o{ star
+position ||..o{ planet
+position ||..o{ moon
+position ||..o{ comet
+position ||..o{ nebula
+position ||..o{ blackhole
+
+@enduml
