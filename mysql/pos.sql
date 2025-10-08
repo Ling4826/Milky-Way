@@ -3,7 +3,7 @@ CREATE TABLE `position` (
     RA_hour INT,
     RA_minute INT,
     RA_second FLOAT,
-    dec_deg INT,
-    dec_min INT,
-    dec_sec FLOAT
+    Dec_deg INT,
+    Dec_min INT,
+    Dec_sec FLOAT
 );

@@ -100,18 +100,21 @@
 
   // Store star positions for fast lookup and compute distance from center
   var starPositions = [];
-  d3.csv('stars.csv', function(data) {
-    var cx = width / 2, cy = height / 2;
-    data.forEach(function(d) {
-      var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
-      var lon = (+d.RA_hour + +d.RA_min / 60 + +d.RA_sec / 3600) * (360 / 24);
-      var coords = projection([lon, lat]);
-      if (coords) {
-        var dx = coords[0] - cx, dy = coords[1] - cy;
-        var distFromCenter = Math.sqrt(dx * dx + dy * dy);
-        starPositions.push({x: coords[0], y: coords[1], dist: distFromCenter});
-      }
-    });
+d3.json('stars_api.php', function(error, data) {
+  if (error) throw error;
+  var cx = width / 2, cy = height / 2;
+  data.forEach(function(d) {
+    var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
+    var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
+    var coords = projection([lon, lat]);
+          console.log(lat ,lon ,  coords); 
+    if (coords) {
+      var dx = coords[0] - cx, dy = coords[1] - cy;
+      var distFromCenter = Math.sqrt(dx * dx + dy * dy);
+      starPositions.push({x: coords[0], y: coords[1], dist: distFromCenter});
+    }
+  });
+
     // (no circle gap helper — circle and line will draw over each other)
 
     // Set up mousemove handler after stars are loaded
@@ -151,7 +154,7 @@
           .attr('r', rstar)
           .attr('stroke-dasharray', null)
           .attr('stroke-dashoffset', null);
-      } else {
+      } else {  
         // Not snapping: unlimited/ray behavior
         yellowCircle
           .attr('cx', cx)
@@ -189,21 +192,26 @@
   magnitude = d3.scale.quantize().domain([-1, 5]).range([7, 6, 5, 4, 3, 2, 1]);
 
   // Draw all stars (both hemispheres) on the same projection
-  d3.csv('stars.csv', function(data) {
-    map.selectAll('.star')
-      .data(data)
-      .enter().append('circle')
-      .attr('class', 'star')
-      .attr('r', function(d) {
-        return magnitude(+d.magnitude) / 2;
-      })
-      .attr('transform', function(d) {
-        var lat, lon, coords;
-        lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
-        lon = (+d.RA_hour + +d.RA_min / 60 + +d.RA_sec / 3600) * (360 / 24);
-        coords = projection([lon, lat]);
-        return coords ? "translate(" + coords[0] + "," + coords[1] + ")" : null;
-      });
-  });
+
+  d3.json('stars_api.php', function(error, data) {
+  if (error) throw error;
+  console.log(data); // เช็คว่ามาไหม
+  map.selectAll('.star')
+    .data(data)
+    .enter().append('circle')
+    .attr('class', 'star')
+    .attr('r', function(d) {
+      return magnitude(+d.magnitude) / 2;
+    })
+    .attr('transform', function(d) {
+      var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
+       var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
+      var coords = projection([lon, lat]);
+      console.log(lat ,lon ,  coords); // เช็คว่ามาไหม
+      if (!coords || isNaN(coords[0]) || isNaN(coords[1])) return "translate(0,0)";
+      return "translate(" + coords[0] + "," + coords[1] + ")";
+    });
+});
+
 
 }).call(this);
