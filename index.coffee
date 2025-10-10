@@ -91,7 +91,7 @@ d3.json('stars_api.php', function(error, data) {
       var lat = +d.dec_deg + +d.dec_min/60 + +d.dec_sec/3600;
       var lon = (+d.RA_hour + +d.RA_min/60 + +d.RA_sec/3600)*(360/24);
       var coords = projection_boreal([lon, lat]);
-      console.log('vega-coords', coords);
+      console.log('vega-coords', coords); 
       return coords ? "translate(" + coords[0] + "," + coords[1] + ")" : null;
     });
   map_austral.selectAll('.star')
@@ -134,6 +134,6 @@ d3.json('planet_api.php', function(error, planetdata) {
     })
    
 });
-
+//ไอจอด
 
             
