@@ -99,7 +99,7 @@
     .attr('y2', height / 2 - 60);
 
   // Store star positions for fast lookup and compute distance from center
-  var starPositions = [];
+  var allPositions = [];
 d3.json('stars_api.php', function(error, starData) {
   if (error) throw error;
 
@@ -112,13 +112,7 @@ d3.json('stars_api.php', function(error, starData) {
     if (coords) {
       var dx = coords[0] - cx, dy = coords[1] - cy;
       var distFromCenter = Math.sqrt(dx * dx + dy * dy);
-      starPositions.push({x: coords[0], y: coords[1], dist: distFromCenter});
-      // วาดดาวฤกษ์ (จุดเล็ก)
-      map.append('circle')
-        .attr('cx', coords[0])
-        .attr('cy', coords[1])
-        .attr('r', 3)
-        .attr('fill', 'gold');
+      allPositions.push({x: coords[0], y: coords[1], dist: distFromCenter});
     }
   });
 
@@ -134,28 +128,38 @@ d3.json('stars_api.php', function(error, starData) {
       if (coords) {
         var dx = coords[0] - cx, dy = coords[1] - cy;
         var distFromCenter = Math.sqrt(dx * dx + dy * dy);
-        starPositions.push({x: coords[0], y: coords[1], dist: distFromCenter});
-        // === วาดดาวเคราะห์ (จุดใหญ่+วงแหวน) ===
-        var planetGroup = map.append('g')
-          .attr('class', 'planet-group')
-          .attr('transform', 'translate(' + coords[0] + ',' + coords[1] + ')');
-        // จุดใหญ่
-        planetGroup.append('circle')
-          .attr('r', 8)
-          .attr('fill', '#44f');
-        // วงแหวนบาง
-        planetGroup.append('ellipse')
-          .attr('rx', 14)
-          .attr('ry', 14)
-          .attr('stroke', '#66f')
-          .attr('stroke-width', 2)
-          .attr('fill', 'none');
+        allPositions.push({x: coords[0], y: coords[1], dist: distFromCenter});
+        
       }
     });
+    
   });
 
+  d3.json('planet_api.php', function(error, planetData) {
+    if (error) throw error;
 
-  
+    var cx = width / 2, cy = height / 2;
+    planetData.forEach(function(d) {
+      var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
+      var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
+      var coords = projection([lon, lat]);
+      console.log(lat, lon, coords);
+      if (coords) {
+        var dx = coords[0] - cx, dy = coords[1] - cy;
+        var distFromCenter = Math.sqrt(dx * dx + dy * dy);
+        allPositions.push({x: coords[0], y: coords[1], dist: distFromCenter});
+        map.append('circle')
+        .attr('cx', coords[0])
+        .attr('cy', coords[1])
+        .attr('r', 3)              
+        .attr('fill', '#eee')      // สีขาวหรือเงิน
+        .attr('stroke', '#44f')
+        .attr('stroke-width', 1);
+      }
+    });
+    
+  });
+
 
   
 
@@ -168,8 +172,8 @@ d3.json('stars_api.php', function(error, starData) {
       var cx = width / 2, cy = height / 2;
       // Find nearest star to mouse
       var minDist = Infinity, nearest = null;
-      for (var i = 0; i < starPositions.length; i++) {
-        var p = starPositions[i];
+      for (var i = 0; i < allPositions.length; i++) {
+        var p = allPositions[i];
         var dmx = p.x - mouse[0], dmy = p.y - mouse[1];
         var dmouse = Math.sqrt(dmx * dmx + dmy * dmy);
         if (dmouse < minDist) {
@@ -256,7 +260,7 @@ d3.json('stars_api.php', function(error, starData) {
          var coords = projection([lon, lat]);
          return 'translate(' + coords[0] + ',' + coords[1] + ')';
       });
-
+ห
     // ดาวเคราะห์: วงกลมใหญ่ + วงแหวน
     map.selectAll('.planet-group')
       .data(planetData)
@@ -268,21 +272,8 @@ d3.json('stars_api.php', function(error, starData) {
          var coords = projection([lon, lat]);
          return 'translate(' + coords[0] + ',' + coords[1] + ')';
       })
-      .each(function(d) {
-         // วงกลมดาวเคราะห์ใหญ่
-         d3.select(this)
-           .append('circle')
-           .attr('r', 8)
-           .attr('fill', '#44f');
-         // วงแหวนรอบ
-         d3.select(this)
-           .append('ellipse')
-           .attr('rx', 14)
-           .attr('ry', 14)
-           .attr('stroke', '#66f')
-           .attr('stroke-width', 2)
-           .attr('fill', 'none');
-      });
+    
+
   });
 });
 
