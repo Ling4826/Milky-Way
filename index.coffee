@@ -80,10 +80,8 @@ svg.call(zoom)
 magnitude = d3.scale.quantize()
     .domain([-1,5])
     .range([7,6,5,4,3,2,1])
-console.log('เริ่มแล้วววว');
 d3.json('stars_api.php', function(error, data) {
   if (error) throw error;
-    console.log("ต่อๆๆๆๆๆ"); 
   map_boreal.selectAll('.star')
     .data(data.filter(function(d){ return +d.dec_deg > 0; }))
     .enter().append('circle')
@@ -96,7 +94,6 @@ d3.json('stars_api.php', function(error, data) {
       console.log('vega-coords', coords);
       return coords ? "translate(" + coords[0] + "," + coords[1] + ")" : null;
     });
-    console.log("วาด?"); 
   map_austral.selectAll('.star')
     .data(data.filter(function(d){ return +d.dec_deg <= 0; }))
     .enter().append('circle')
@@ -110,5 +107,54 @@ d3.json('stars_api.php', function(error, data) {
     });
     con
 });
+
+d3.json('planet_api.php', function(error, planetdata) {
+  if (error) throw error;
+  // เหนือ (boreal)
+  map_boreal.selectAll('.planet-group')
+    .data(planetdata.filter(function(d){ return +d.dec_deg > 0; }))
+    .enter().append('g')
+    .attr('class', 'planet-group')
+    .attr('transform', function(d) {
+      var lat = +d.dec_deg + +d.dec_min/60 + +d.dec_sec/3600;
+      var lon = (+d.RA_hour + +d.RA_min/60 + +d.RA_sec/3600)*(360/24);
+      var coords = projection_boreal([lon, lat]);
+      return coords ? "translate(" + coords[0] + "," + coords[1] + ")" : null;
+    })
+    .each(function(d) {
+      d3.select(this).append('circle')
+        .attr('r', 8)
+        .attr('fill', '#44f'); // จุดใหญ่
+      d3.select(this).append('ellipse')
+        .attr('rx', 14)
+        .attr('ry', 14)
+        .attr('stroke', '#66f')
+        .attr('stroke-width', 2)
+        .attr('fill', 'none'); // วงแหวน
+    });
+  // ใต้ (austral)
+  map_austral.selectAll('.planet-group')
+    .data(planetdata.filter(function(d){ return +d.dec_deg <= 0; }))
+    .enter().append('g')
+    .attr('class', 'planet-group')
+    .attr('transform', function(d) {
+      var lat = +d.dec_deg + +d.dec_min/60 + +d.dec_sec/3600;
+      var lon = (+d.RA_hour + +d.RA_min/60 + +d.RA_sec/3600)*(360/24);
+      var coords = projection_austral([lon, lat]);
+      return coords ? "translate(" + coords[0] + "," + coords[1] + ")" : null;
+    })
+    .each(function(d) {
+      d3.select(this).append('circle')
+        .attr('r', 8)
+        .attr('fill', '#44f');
+      d3.select(this).append('ellipse')
+        .attr('rx', 14)
+        .attr('ry', 14)
+        .attr('stroke', '#66f')
+        .attr('stroke-width', 2)
+        .attr('fill', 'none');
+    });
+});
+
 
             

@@ -100,20 +100,65 @@
 
   // Store star positions for fast lookup and compute distance from center
   var starPositions = [];
-d3.json('stars_api.php', function(error, data) {
+d3.json('stars_api.php', function(error, starData) {
   if (error) throw error;
+
   var cx = width / 2, cy = height / 2;
-  data.forEach(function(d) {
+  starData.forEach(function(d) {
     var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
     var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
     var coords = projection([lon, lat]);
-          console.log(lat ,lon ,  coords); 
+    console.log(lat, lon, coords);
     if (coords) {
       var dx = coords[0] - cx, dy = coords[1] - cy;
       var distFromCenter = Math.sqrt(dx * dx + dy * dy);
       starPositions.push({x: coords[0], y: coords[1], dist: distFromCenter});
+      // วาดดาวฤกษ์ (จุดเล็ก)
+      map.append('circle')
+        .attr('cx', coords[0])
+        .attr('cy', coords[1])
+        .attr('r', 3)
+        .attr('fill', 'gold');
     }
   });
+
+  d3.json('planet_api.php', function(error, planetData) {
+    if (error) throw error;
+
+    var cx = width / 2, cy = height / 2;
+    planetData.forEach(function(d) {
+      var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
+      var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
+      var coords = projection([lon, lat]);
+      console.log(lat, lon, coords);
+      if (coords) {
+        var dx = coords[0] - cx, dy = coords[1] - cy;
+        var distFromCenter = Math.sqrt(dx * dx + dy * dy);
+        starPositions.push({x: coords[0], y: coords[1], dist: distFromCenter});
+        // === วาดดาวเคราะห์ (จุดใหญ่+วงแหวน) ===
+        var planetGroup = map.append('g')
+          .attr('class', 'planet-group')
+          .attr('transform', 'translate(' + coords[0] + ',' + coords[1] + ')');
+        // จุดใหญ่
+        planetGroup.append('circle')
+          .attr('r', 8)
+          .attr('fill', '#44f');
+        // วงแหวนบาง
+        planetGroup.append('ellipse')
+          .attr('rx', 14)
+          .attr('ry', 14)
+          .attr('stroke', '#66f')
+          .attr('stroke-width', 2)
+          .attr('fill', 'none');
+      }
+    });
+  });
+
+
+  
+
+  
+
 
     // (no circle gap helper — circle and line will draw over each other)
 
@@ -193,25 +238,54 @@ d3.json('stars_api.php', function(error, data) {
 
   // Draw all stars (both hemispheres) on the same projection
 
-  d3.json('stars_api.php', function(error, data) {
-  if (error) throw error;
-  console.log(data); // เช็คว่ามาไหม
-  map.selectAll('.star')
-    .data(data)
-    .enter().append('circle')
-    .attr('class', 'star')
-    .attr('r', function(d) {
-      return magnitude(+d.magnitude) / 2;
-    })
-    .attr('transform', function(d) {
-      var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
-       var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
-      var coords = projection([lon, lat]);
-      console.log(lat ,lon ,  coords); // เช็คว่ามาไหม
-      if (!coords || isNaN(coords[0]) || isNaN(coords[1])) return "translate(0,0)";
-      return "translate(" + coords[0] + "," + coords[1] + ")";
-    });
+ d3.json('stars_api.php', function(error1, starData) {
+  if (error1) throw error1;
+  d3.json('planet_api.php', function(error2, planetData) {
+    if (error2) throw error2;
+    console.log(planetData); 
+    
+    map.selectAll('.star')
+      .data(starData)
+      .enter().append('circle')
+      .attr('class', 'star')
+      .attr('r', 3)
+      .attr('fill', 'gold')
+      .attr('transform', function(d) {
+         var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
+         var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
+         var coords = projection([lon, lat]);
+         return 'translate(' + coords[0] + ',' + coords[1] + ')';
+      });
+
+    // ดาวเคราะห์: วงกลมใหญ่ + วงแหวน
+    map.selectAll('.planet-group')
+      .data(planetData)
+      .enter().append('g')
+      .attr('class', 'planet-group')
+      .attr('transform', function(d) {
+         var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
+         var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
+         var coords = projection([lon, lat]);
+         return 'translate(' + coords[0] + ',' + coords[1] + ')';
+      })
+      .each(function(d) {
+         // วงกลมดาวเคราะห์ใหญ่
+         d3.select(this)
+           .append('circle')
+           .attr('r', 8)
+           .attr('fill', '#44f');
+         // วงแหวนรอบ
+         d3.select(this)
+           .append('ellipse')
+           .attr('rx', 14)
+           .attr('ry', 14)
+           .attr('stroke', '#66f')
+           .attr('stroke-width', 2)
+           .attr('fill', 'none');
+      });
+  });
 });
+
 
 
 }).call(this);
