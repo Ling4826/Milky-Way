@@ -121,18 +121,7 @@ d3.json('planet_api.php', function(error, planetdata) {
       var coords = projection_boreal([lon, lat]);
       return coords ? "translate(" + coords[0] + "," + coords[1] + ")" : null;
     })
-    .each(function(d) {
-      d3.select(this).append('circle')
-        .attr('r', 8)
-        .attr('fill', '#44f'); // จุดใหญ่
-      d3.select(this).append('ellipse')
-        .attr('rx', 14)
-        .attr('ry', 14)
-        .attr('stroke', '#66f')
-        .attr('stroke-width', 2)
-        .attr('fill', 'none'); // วงแหวน
-    });
-  // ใต้ (austral)
+    
   map_austral.selectAll('.planet-group')
     .data(planetdata.filter(function(d){ return +d.dec_deg <= 0; }))
     .enter().append('g')
@@ -143,17 +132,7 @@ d3.json('planet_api.php', function(error, planetdata) {
       var coords = projection_austral([lon, lat]);
       return coords ? "translate(" + coords[0] + "," + coords[1] + ")" : null;
     })
-    .each(function(d) {
-      d3.select(this).append('circle')
-        .attr('r', 8)
-        .attr('fill', '#44f');
-      d3.select(this).append('ellipse')
-        .attr('rx', 14)
-        .attr('ry', 14)
-        .attr('stroke', '#66f')
-        .attr('stroke-width', 2)
-        .attr('fill', 'none');
-    });
+   
 });
 
 
