@@ -1,4 +1,4 @@
-(function() {
+(function () {
   var graticule, height, magnitude, map, maps, path_generator, projection, svg, width, zoom;
 
   svg = d3.select('svg');
@@ -8,13 +8,13 @@
 
   // Single azimuthal equidistant projection centered at origin
   // Center the projection in the middle of the SVG
-    projection = d3.geo.azimuthalEquidistant()
-      .scale(110) // even smaller scale for a smaller circle
-      .rotate([0, 0, 0])
-      .center([0, 0])
-      .translate([width / 2, height / 2])
-      .precision(.1)
-      .clipAngle(90 + 1e-3);
+  projection = d3.geo.azimuthalEquidistant()
+    .scale(110) // even smaller scale for a smaller circle
+    .rotate([0, 0, 0])
+    .center([0, 0])
+    .translate([width / 2, height / 2])
+    .precision(.1)
+    .clipAngle(90 + 1e-3);
 
   graticule = d3.geo.graticule().minorStep([15, 10]).majorStep([90, 10]);
   path_generator = d3.geo.path().projection(projection);
@@ -42,7 +42,7 @@
 
   // Add hour (RA) labels in a circle inside the main star map
   var radius = Math.min(width, height) / 2 - 60;
-  var hourLabelRadius = radius ;
+  var hourLabelRadius = radius;
   for (var h = 0; h < 24; h++) {
     var angle = (h / 24) * 2 * Math.PI - Math.PI / 2;
     var lx = width / 2 + Math.cos(angle) * hourLabelRadius;
@@ -100,27 +100,11 @@
 
   // Store star positions for fast lookup and compute distance from center
   var allPositions = [];
-d3.json('stars_api.php', function(error, starData) {
-  if (error) throw error;
-
-  var cx = width / 2, cy = height / 2;
-  starData.forEach(function(d) {
-    var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
-    var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
-    var coords = projection([lon, lat]);
-    console.log(lat, lon, coords);
-    if (coords) {
-      var dx = coords[0] - cx, dy = coords[1] - cy;
-      var distFromCenter = Math.sqrt(dx * dx + dy * dy);
-      allPositions.push({x: coords[0], y: coords[1], dist: distFromCenter});
-    }
-  });
-
-  d3.json('planet_api.php', function(error, planetData) {
+  d3.json('stars_api.php', function (error, starData) {
     if (error) throw error;
 
     var cx = width / 2, cy = height / 2;
-    planetData.forEach(function(d) {
+    starData.forEach(function (d) {
       var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
       var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
       var coords = projection([lon, lat]);
@@ -128,46 +112,54 @@ d3.json('stars_api.php', function(error, starData) {
       if (coords) {
         var dx = coords[0] - cx, dy = coords[1] - cy;
         var distFromCenter = Math.sqrt(dx * dx + dy * dy);
-        allPositions.push({x: coords[0], y: coords[1], dist: distFromCenter});
-        
+        allPositions.push({ x: coords[0], y: coords[1], dist: distFromCenter });
       }
     });
-    
-  });
 
-  d3.json('planet_api.php', function(error, planetData) {
-    if (error) throw error;
 
-    var cx = width / 2, cy = height / 2;
-    planetData.forEach(function(d) {
-      var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
-      var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
-      var coords = projection([lon, lat]);
-      console.log(lat, lon, coords);
-      if (coords) {
-        var dx = coords[0] - cx, dy = coords[1] - cy;
-        var distFromCenter = Math.sqrt(dx * dx + dy * dy);
-        allPositions.push({x: coords[0], y: coords[1], dist: distFromCenter});
-        map.append('circle')
-        .attr('cx', coords[0])
-        .attr('cy', coords[1])
-        .attr('r', 3)              
-        .attr('fill', '#eee')      // สีขาวหรือเงิน
-        .attr('stroke', '#44f')
-        .attr('stroke-width', 1);
-      }
+
+    d3.json('planet_api.php', function (error, planetData) {
+      if (error) throw error;
+      var cx = width / 2, cy = height / 2;
+      planetData.forEach(function (d) {
+        var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
+        var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
+        var coords = projection([lon, lat]);
+        console.log(lat, lon, coords);
+        if (coords) {
+          var dx = coords[0] - cx, dy = coords[1] - cy;
+          var distFromCenter = Math.sqrt(dx * dx + dy * dy);
+          allPositions.push({ x: coords[0], y: coords[1], dist: distFromCenter });
+
+          map.append('circle')
+            .attr('cx', coords[0])
+            .attr('cy', coords[1])
+            .attr('r', 8)          
+            .attr('fill', '#ff0000ff')   
+            .attr('stroke', '#44f')
+            .attr('stroke-width', 2);
+
+          map.append('circle')
+            .attr('cx', coords[0])
+            .attr('cy', coords[1])
+            .attr('r', 13)          
+            .attr('fill', 'none')    
+            .attr('stroke', '#44f')  
+            .attr('stroke-width', 1); 
+
+        }
+      });
+
     });
-    
-  });
 
 
-  
+
 
 
     // (no circle gap helper — circle and line will draw over each other)
 
     // Set up mousemove handler after stars are loaded
-    svg.on('mousemove', function() {
+    svg.on('mousemove', function () {
       var mouse = d3.mouse(this);
       var cx = width / 2, cy = height / 2;
       // Find nearest star to mouse
@@ -203,7 +195,7 @@ d3.json('stars_api.php', function(error, starData) {
           .attr('r', rstar)
           .attr('stroke-dasharray', null)
           .attr('stroke-dashoffset', null);
-      } else {  
+      } else {
         // Not snapping: unlimited/ray behavior
         yellowCircle
           .attr('cx', cx)
@@ -235,47 +227,46 @@ d3.json('stars_api.php', function(error, starData) {
 
   // (mousemove handler moved inside d3.csv callback)
 
-    // (Zoom and pan removed)
+  // (Zoom and pan removed)
 
   // Define a scale for magnitude
   magnitude = d3.scale.quantize().domain([-1, 5]).range([7, 6, 5, 4, 3, 2, 1]);
 
   // Draw all stars (both hemispheres) on the same projection
 
- d3.json('stars_api.php', function(error1, starData) {
-  if (error1) throw error1;
-  d3.json('planet_api.php', function(error2, planetData) {
-    if (error2) throw error2;
-    console.log(planetData); 
-    
-    map.selectAll('.star')
-      .data(starData)
-      .enter().append('circle')
-      .attr('class', 'star')
-      .attr('r', 3)
-      .attr('fill', 'gold')
-      .attr('transform', function(d) {
-         var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
-         var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
-         var coords = projection([lon, lat]);
-         return 'translate(' + coords[0] + ',' + coords[1] + ')';
-      });
-ห
-    // ดาวเคราะห์: วงกลมใหญ่ + วงแหวน
-    map.selectAll('.planet-group')
-      .data(planetData)
-      .enter().append('g')
-      .attr('class', 'planet-group')
-      .attr('transform', function(d) {
-         var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
-         var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
-         var coords = projection([lon, lat]);
-         return 'translate(' + coords[0] + ',' + coords[1] + ')';
-      })
-    
+  d3.json('stars_api.php', function (error1, starData) {
+    if (error1) throw error1;
+    d3.json('planet_api.php', function (error2, planetData) {
+      if (error2) throw error2;
+      console.log(planetData);
 
+      map.selectAll('.star')
+        .data(starData)
+        .enter().append('circle')
+        .attr('class', 'star')
+        .attr('r', 3)
+        .attr('fill', 'gold')
+        .attr('transform', function (d) {
+          var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
+          var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
+          var coords = projection([lon, lat]);
+          return 'translate(' + coords[0] + ',' + coords[1] + ')';
+        });
+      
+      map.selectAll('.planet-group')
+        .data(planetData)
+        .enter().append('g')
+        .attr('class', 'planet-group')
+        .attr('transform', function (d) {
+          var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
+          var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
+          var coords = projection([lon, lat]);
+          return 'translate(' + coords[0] + ',' + coords[1] + ')';
+        })
+
+
+    });
   });
-});
 
 
 
