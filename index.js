@@ -35,8 +35,6 @@ const zoom = d3.zoom()
     maps.attr('transform', event.transform); // zoom/scale maps เท่านั้น
     // yellowGroup ไม่เปลี่ยน
   })
-  .filter((event) => event.type === 'wheel'); // wheel เท่านั้น
-
 svg.call(zoom);
 
 
@@ -182,6 +180,7 @@ svg.call(zoom);
   // --- Draw nebulae ---
   nebulaData.forEach(d => {
     const coords = convertCoords(d);
+    
     if (!coords) return;
     allPositions.push({ x: coords[0], y: coords[1], type: 'nebula', id: d.id });
     map.append('circle')
