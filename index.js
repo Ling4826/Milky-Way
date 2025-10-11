@@ -1,29 +1,23 @@
-(function () {
-  var graticule, height, magnitude, map, maps, path_generator, projection, svg, width, zoom;
+(async () => {
+  const svg = d3.select('svg');
+  const width = +svg.attr('width');
+  const height = +svg.attr('height');
 
-  svg = d3.select('svg');
-
-
-
-
-  width = svg[0][0].getBoundingClientRect().width;
-  height = svg[0][0].getBoundingClientRect().height;
-
-  // Single azimuthal equidistant projection centered at origin
-  // Center the projection in the middle of the SVG
-  projection = d3.geo.azimuthalEquidistant()
-    .scale(110) // even smaller scale for a smaller circle
-    .rotate([0, 0, 0])
-    .center([0, 0])
+  // --- Projection ---
+  const projection = d3.geoAzimuthalEquidistant()
+    .scale(110)
     .translate([width / 2, height / 2])
-    .precision(.1)
     .clipAngle(90 + 1e-3);
 
-  graticule = d3.geo.graticule().minorStep([15, 10]).majorStep([90, 10]);
-  path_generator = d3.geo.path().projection(projection);
+  const pathGenerator = d3.geoPath(projection);
 
-  // Add a white rectangle border to the SVG
-  var side = Math.min(width, height);
+  // --- Graticule ---
+  const graticule = d3.geoGraticule()
+    .step([90, 10])       // major step
+    .stepMinor([15, 10]); // minor step
+
+  // --- Draw border ---
+  const side = Math.min(width, height);
   svg.insert('rect', ':first-child')
     .attr('x', 0)
     .attr('y', 0)
@@ -33,38 +27,52 @@
     .attr('stroke', '#fff')
     .attr('stroke-width', 2);
 
-  // Create a single map group
-  maps = svg.append('g');
-  map = maps.append('g').attr('id', 'map_combined');
+  // --- Map group ---
+  const maps = svg.append('g');
+const zoom = d3.zoom()
+  .scaleExtent([0.000278, 50])
+  .on('zoom', (event) => {
+    maps.attr('transform', event.transform); // zoom/scale maps เท่านั้น
+    // yellowGroup ไม่เปลี่ยน
+  })
+  .filter((event) => event.type === 'wheel'); // wheel เท่านั้น
 
-  // Draw the graticule
+svg.call(zoom);
+
+
+  const map = maps.append('g').attr('id', 'map_combined');
+
+  // --- Draw graticule ---
   map.append('path')
-    .datum(graticule)
+    .datum(graticule())
     .attr('class', 'graticule')
-    .attr('d', path_generator);
+    .attr('d', pathGenerator)
+    .attr('fill', 'none')
+    .attr('stroke', '#888')
+    .attr('stroke-width', 0.5);
 
-  // Add hour (RA) labels in a circle inside the main star map
-  var radius = Math.min(width, height) / 2 - 60;
-  var hourLabelRadius = radius;
-  for (var h = 0; h < 24; h++) {
-    var angle = (h / 24) * 2 * Math.PI - Math.PI / 2;
-    var lx = width / 2 + Math.cos(angle) * hourLabelRadius;
-    var ly = height / 2 + Math.sin(angle) * hourLabelRadius + 4; // +4 for vertical centering
+  // --- Hour labels ---
+  const radius = side / 2 - 60;
+  for (let h = 0; h < 24; h++) {
+    const angle = (h / 24) * 2 * Math.PI - Math.PI / 2;
+    const lx = width / 2 + Math.cos(angle) * radius;
+    const ly = height / 2 + Math.sin(angle) * radius + 4;
     map.append('text')
       .attr('class', h % 6 === 0 ? 'axis-label' : 'tick-label')
       .attr('x', lx)
       .attr('y', ly)
-      .text(h === 0 ? '0h' : h + 'h');
+      .text(h === 0 ? '0h' : `${h}h`);
   }
 
-  // Add 90° label at center, then circles/labels for 80, 70, ..., 10 (with correct radius)
+  // --- Degree circles/labels ---
   map.append('text')
     .attr('class', 'axis-label')
     .attr('x', width / 2)
     .attr('y', height / 2)
     .text('90°');
-  for (var deg = 80; deg >= 10; deg -= 10) {
-    var r = ((90 - deg) / 90) * radius;
+
+  for (let deg = 80; deg >= 10; deg -= 10) {
+    const r = ((90 - deg) / 90) * radius;
     map.append('circle')
       .attr('cx', width / 2)
       .attr('cy', height / 2)
@@ -73,384 +81,151 @@
       .attr('stroke', '#fff')
       .attr('stroke-width', 0.7)
       .attr('opacity', 0.5);
-    // Degree label
+
     map.append('text')
       .attr('class', 'tick-label')
       .attr('x', width / 2)
       .attr('y', height / 2 - r - 6)
-      .text(deg + '°');
+      .text(`${deg}°`);
   }
 
-  // --- Yellow visuals: circle radius follows mouse distance, line extends through mouse (no limits) ---
-  // Move yellow group to the very top for visibility
-  var yellowGroup = svg.append('g').attr('id', 'yellow-group');
-  var yellowCircle = yellowGroup.append('circle')
+  // --- Yellow circle/line for mouse ---
+  const yellowGroup = svg.append('g').attr('id', 'yellow-group');
+  const yellowCircle = yellowGroup.append('circle')
     .attr('stroke', '#ffff66')
     .attr('stroke-width', 2)
     .attr('fill', 'none')
-    .attr('opacity', 1)
     .attr('cx', width / 2)
     .attr('cy', height / 2)
     .attr('r', 10);
-  var yellowLine = yellowGroup.append('line')
+  const yellowLine = yellowGroup.append('line')
     .attr('stroke', '#ffff66')
     .attr('stroke-width', 2)
-    .attr('opacity', 1)
     .attr('x1', width / 2)
     .attr('y1', height / 2)
     .attr('x2', width / 2)
     .attr('y2', height / 2 - 60);
 
-  // Store star positions for fast lookup and compute distance from center
-  var allPositions = [];
-  d3.json('stars_api.php', function (error, starData) {
-    if (error) throw error;
+  // --- Fetch data ---
+  const [starData, planetData, moonData, cometData, nebulaData] = await Promise.all([
+    d3.json('stars_api.php'),
+    d3.json('planet_api.php'),
+    d3.json('moon_api.php'),
+    d3.json('comet_api.php'),
+    d3.json('nebula_api.php')
+  ]);
 
-    var cx = width / 2, cy = height / 2;
-    starData.forEach(function (d) {
-      var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
-      var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
-      var coords = projection([lon, lat]);
-      console.log(lat, lon, coords);
-      if (coords) {
-        var dx = coords[0] - cx, dy = coords[1] - cy;
-        var distFromCenter = Math.sqrt(dx * dx + dy * dy);
-        allPositions.push({ x: coords[0], y: coords[1], dist: distFromCenter });
-      }
-    });
+  const allPositions = [];
+  const cx = width / 2, cy = height / 2;
 
+  const convertCoords = d => {
+    const lat = +d.dec_deg + (+d.dec_min || 0)/60 + (+d.dec_sec || 0)/3600;
+    const lon = (+d.RA_hour + (+d.RA_minute||0)/60 + (+d.RA_second||0)/3600) * 15;
+    return projection([lon, lat]);
+  }
 
-
-    d3.json('planet_api.php', function (error, planetData) {
-      if (error) throw error;
-      var cx = width / 2, cy = height / 2;
-      planetData.forEach(function (d) {
-        var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
-        var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
-        var coords = projection([lon, lat]);
-        console.log(lat, lon, coords);
-        if (coords) {
-          var dx = coords[0] - cx, dy = coords[1] - cy;
-          var distFromCenter = Math.sqrt(dx * dx + dy * dy);
-          allPositions.push({ x: coords[0], y: coords[1], dist: distFromCenter });
-
-          map.append('circle')
-            .attr('cx', coords[0])
-            .attr('cy', coords[1])
-            .attr('r', 8)
-            .attr('fill', '#ff0000ff')
-            .attr('stroke', '#44f')
-            .attr('stroke-width', 2);
-
-          map.append('circle')
-            .attr('cx', coords[0])
-            .attr('cy', coords[1])
-            .attr('r', 13)
-            .attr('fill', 'none')
-            .attr('stroke', '#44f')
-            .attr('stroke-width', 1);
-
-        }
-      });
-
-    });
-
-    d3.json('moon_api.php', function (error, moonData) {
-      if (error) throw error;
-      var cx = width / 2, cy = height / 2;
-      moonData.forEach(function (d) {
-        var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
-        var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
-        var coords = projection([lon, lat]);
-        if (coords) {
-          var dx = coords[0] - cx, dy = coords[1] - cy;
-          var distFromCenter = Math.sqrt(dx * dx + dy * dy);
-          allPositions.push({
-            x: coords[0],
-            y: coords[1],
-            dist: distFromCenter,
-          });
-          map.append('circle')
-            .attr('cx', coords[0])
-            .attr('cy', coords[1])
-            .attr('r', 4)
-            .attr('fill', '#ffff00')
-            .attr('stroke', '#448')
-            .attr('stroke-width', 1);
-        }
-      });
-    });
-
-    d3.json('comet_api.php', function (error, cometData) {
-      if (error) throw error;
-      var cx = width / 2, cy = height / 2;
-      cometData.forEach(function (d) {
-        var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
-        var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
-        var coords = projection([lon, lat]);
-        if (coords) {
-          var dx = coords[0] - cx, dy = coords[1] - cy;
-          var distFromCenter = Math.sqrt(dx * dx + dy * dy);
-          allPositions.push({
-            x: coords[0],
-            y: coords[1],
-            dist: distFromCenter,
-          });
-
-          map.append('circle')
-            .attr('cx', coords[0])
-            .attr('cy', coords[1])
-            .attr('r', 6)  // ดาวหางใหญ่กว่าดวงจันทร์หน่อย
-            .attr('fill', '#00ffff') // สีฟ้า-เขียวสว่างสำหรับดาวหาง
-            .attr('stroke', '#088')
-            .attr('stroke-width', 2);
-        }
-      });
-    });
-    d3.json('nebula_api.php', function (error, nebulaData) {
-      if (error) throw error;
-      var cx = width / 2, cy = height / 2;
-      nebulaData.forEach(function (d) {
-        var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
-        var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
-        var coords = projection([lon, lat]);
-        if (coords) {
-          var dx = coords[0] - cx, dy = coords[1] - cy;
-          var distFromCenter = Math.sqrt(dx * dx + dy * dy);
-          allPositions.push({
-            x: coords[0],
-            y: coords[1],
-            dist: distFromCenter,
-          });
-          var defs = svg.append("defs");
-          var filter = defs.append("filter")
-            .attr("id", "glow");
-          filter.append("feGaussianBlur")
-            .attr("stdDeviation", "8") // ปรับค่าความกว้างของ blur
-            .attr("result", "coloredBlur");
-          var feMerge = filter.append("feMerge");
-          feMerge.append("feMergeNode")
-            .attr("in", "coloredBlur");
-          feMerge.append("feMergeNode")
-            .attr("in", "SourceGraphic");
-
-          // วาดวงกลมแล้วใช้ filter glow ที่สร้างไว้
-          map.append('circle')
-            .attr('cx', coords[0])
-            .attr('cy', coords[1])
-            .attr('r', 16) // ใหญ่กว่าปกติ
-            .attr('fill', '#00ffff')
-            .attr('stroke', '#088')
-            .attr('stroke-width', 2)
-            .style('filter', 'url(#glow)');
-        }
-      });
-    });
-
-
-
-
-
-
-    // (no circle gap helper — circle and line will draw over each other)
-
-    // Set up mousemove handler after stars are loaded
-    svg.on('mousemove', function () {
-      var mouse = d3.mouse(this);
-
-      var cx = width / 2, cy = height / 2;
-      // Find nearest star to mouse
-      var minDist = Infinity, nearest = null;
-      for (var i = 0; i < allPositions.length; i++) {
-        var p = allPositions[i];
-        var dmx = p.x - mouse[0], dmy = p.y - mouse[1];
-        var dmouse = Math.sqrt(dmx * dmx + dmy * dmy);
-        if (dmouse < minDist) {
-          minDist = dmouse;
-          nearest = p;
-        }
-      }
-
-      // Calculate distance from mouse to center
-      var dx = mouse[0] - cx, dy = mouse[1] - cy;
-      var distToCenter = Math.sqrt(dx * dx + dy * dy);
-      // No upper limit for circle radius by default: let it grow relative to distance from center
-      var minRadius = 2;
-      var circleRadius = Math.max(minRadius, distToCenter);
-      // Snap threshold (pixels). If the mouse is within this many pixels of a star, snap to it.
-      var snapThreshold = 8;
-      if (nearest && minDist <= snapThreshold) {
-        console.log('Type:', nearest.type);
-
-        // Snap: set line end to star and circle radius to star's distance from center
-        yellowLine
-          .attr('x1', cx)
-          .attr('y1', cy)
-          .attr('x2', nearest.x)
-          .attr('y2', nearest.y);
-        var rstar = Math.max(minRadius, nearest.dist);
-        yellowCircle
-          .attr('cx', cx)
-          .attr('cy', cy)
-          .attr('r', rstar)
-          .attr('stroke-dasharray', null)
-          .attr('stroke-dashoffset', null);
-      } else {
-        // Not snapping: unlimited/ray behavior
-        yellowCircle
-          .attr('cx', cx)
-          .attr('cy', cy)
-          .attr('r', circleRadius);
-        if (distToCenter === 0) {
-          // mouse at center: draw a tiny line upwards
-          yellowLine
-            .attr('x1', cx)
-            .attr('y1', cy)
-            .attr('x2', cx)
-            .attr('y2', cy - 1);
-        } else {
-          var scale = Math.max(width, height) * 2 / distToCenter; // large enough to go off-canvas
-          var farX = cx + dx * scale;
-          var farY = cy + dy * scale;
-          yellowLine
-            .attr('x1', cx)
-            .attr('y1', cy)
-            .attr('x2', farX)
-            .attr('y2', farY);
-          yellowCircle.attr('stroke-dasharray', null).attr('stroke-dashoffset', null);
-        }
-      }
-    });
+  // --- Draw stars ---
+  starData.forEach(d => {
+    const coords = convertCoords(d);
+    if (!coords) return;
+    allPositions.push({ x: coords[0], y: coords[1], type: 'star', id: d.id });
+    map.append('circle')
+      .attr('cx', coords[0])
+      .attr('cy', coords[1])
+      .attr('r', 3)
+      .attr('fill', 'gold')
+      .on('click', () => alert(`Clicked star ID: ${d.id}`));
   });
 
-  // (starPositions already populated above)
+  // --- Draw planets ---
+  planetData.forEach(d => {
+    const coords = convertCoords(d);
+    if (!coords) return;
+    allPositions.push({ x: coords[0], y: coords[1], type: 'planet', id: d.id });
+    map.append('circle')
+      .attr('cx', coords[0])
+      .attr('cy', coords[1])
+      .attr('r', 8)
+      .attr('fill', '#ff0000ff')
+      .attr('stroke', '#44f')
+      .attr('stroke-width', 2);
+  });
 
-  // (mousemove handler moved inside d3.csv callback)
+  // --- Draw moons ---
+  moonData.forEach(d => {
+    const coords = convertCoords(d);
+    if (!coords) return;
+    allPositions.push({ x: coords[0], y: coords[1], type: 'moon', id: d.id });
+    map.append('circle')
+      .attr('cx', coords[0])
+      .attr('cy', coords[1])
+      .attr('r', 4)
+      .attr('fill', '#ffff00')
+      .attr('stroke', '#448')
+      .attr('stroke-width', 1);
+  });
 
-  // (Zoom and pan removed)
+  // --- Draw comets ---
+  cometData.forEach(d => {
+    const coords = convertCoords(d);
+    if (!coords) return;
+    allPositions.push({ x: coords[0], y: coords[1], type: 'comet', id: d.id });
+    map.append('circle')
+      .attr('cx', coords[0])
+      .attr('cy', coords[1])
+      .attr('r', 6)
+      .attr('fill', '#00ffff')
+      .attr('stroke', '#088')
+      .attr('stroke-width', 2);
+  });
 
-  // Define a scale for magnitude
-  magnitude = d3.scale.quantize().domain([-1, 5]).range([7, 6, 5, 4, 3, 2, 1]);
+  // --- Draw nebulae ---
+  nebulaData.forEach(d => {
+    const coords = convertCoords(d);
+    if (!coords) return;
+    allPositions.push({ x: coords[0], y: coords[1], type: 'nebula', id: d.id });
+    map.append('circle')
+      .attr('cx', coords[0])
+      .attr('cy', coords[1])
+      .attr('r', 16)
+      .attr('fill', '#00ffff')
+      .attr('stroke', '#088')
+      .attr('stroke-width', 2)
+      .style('filter', 'url(#glow)');
+  });
 
-  // Draw all stars (both hemispheres) on the same projection
-  d3.json('stars_api.php', function (error1, starData) {
-    if (error1) throw error1;
-    d3.json('planet_api.php', function (error2, planetData) {
-      if (error2) throw error2;
-      d3.json('moon_api.php', function (error3, moonData) {
-        if (error3) throw error3;
-        d3.json('comet_api.php', function (error4, cometData) {
-          if (error4) throw error4;
-          d3.json('nebula_api.php', function (error5, nebulaData) {
-          if (error5) throw error5;
-          var allPositions = [];
-          var cx = width / 2, cy = height / 2;
-
-        // --- วาดและเก็บตำแหน่งดาวฤกษ์ ---
-        map.selectAll('.star')
-          .data(starData)
-          .enter().append('circle')
-          .attr('class', 'star')
-          .attr('r', 3)
-          .attr('fill', 'gold')
-          .attr('transform', function (d) {
-            var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
-            var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
-            var coords = projection([lon, lat]);
-            if (coords) {
-              allPositions.push({
-                x: coords[0],
-                y: coords[1],
-                type: 'star',
-                id: d.id
-              });
-              return 'translate(' + coords[0] + ',' + coords[1] + ')';
-            }
-            return null;
-          })
-          .on('click', function(event, d) {
-            alert('Clicked star ID:', d.id);
-          });
-
-          var planetGroup = map.selectAll('.planet-group')
-            .data(planetData)
-            .enter().append('g')
-            .attr('class', 'planet-group')
-            .attr('transform', function (d) {
-              var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
-              var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
-              var coords = projection([lon, lat]);
-              return coords ? 'translate(' + coords[0] + ',' + coords[1] + ')' : null;
-            });
-
-          // วาด planet ด้วยตำแหน่งจาก planet API ตามปกติใน group
-          planetGroup.append('circle')
-            .attr('r', 8)
-            .attr('fill', '#ff0000ff')
-            .attr('stroke', '#44f')
-            .attr('stroke-width', 2);
-
-          // วาด moon ตำแหน่งจริงจาก moon API แบบ absolute (ไม่ต้องเป็นลูกแต่ละ planetGroup ก็ได้)
-          moonData.forEach(function (moon) {
-            var lat = +moon.dec_deg + +moon.dec_min / 60 + +moon.dec_sec / 3600;
-            var lon = (+moon.RA_hour + +moon.RA_minute / 60 + +moon.RA_second / 3600) * (360 / 24);
-            var coords = projection([lon, lat]);
-            if (coords) {
-              map.append('circle')
-                .attr('cx', coords[0])
-                .attr('cy', coords[1])
-                .attr('r', 4)
-                .attr('fill', '#fff')
-                .attr('stroke', '#888')
-                .attr('stroke-width', 1);
-            }
-          });
-          cometData.forEach(function (comet) {
-            var lat = +comet.dec_deg + +comet.dec_min / 60 + +comet.dec_sec / 3600;
-            var lon = (+comet.RA_hour + +comet.RA_minute / 60 + +comet.RA_second / 3600) * (360 / 24);
-            var coords = projection([lon, lat]);
-            if (coords) {
-              // เก็บใน allPositions เพื่อใช้ฟีเจอร์เช่น snap หรือ highlight ได้
-              allPositions.push({
-                x: coords[0],
-                y: coords[1],
-                dist: Math.sqrt(Math.pow(coords[0] - cx, 2) + Math.pow(coords[1] - cy, 2)),
-                type: "comet",
-                id: comet.comet_id ?? comet.id // ใช้ key ที่ส่งมาจาก API
-              });
-
-              // วาดด้วย style เฉพาะของดาวหาง
-              map.append('circle')
-                .attr('cx', coords[0])
-                .attr('cy', coords[1])
-                .attr('r', 6) // ให้ใหญ่กว่าดวงจันทร์
-                .attr('fill', '#00ffff') // สีฟ้า-เขียว
-                .attr('stroke', '#088')
-                .attr('stroke-width', 2)
-                .attr('class', 'comet');
-            }
-          });
-          console.log(nebulaData);
-          nebulaData.forEach(function (nebula) {
-            var lat = +nebula.dec_deg + +nebula.dec_min / 60 + +nebula.dec_sec / 3600;
-            var lon = (+nebula.RA_hour + +nebula.RA_minute / 60 + +nebula.RA_second / 3600) * (360 / 24);
-            var coords = projection([lon, lat]);
-            if (coords) {
-              allPositions.push({
-                x: coords[0],
-                y: coords[1],
-                dist: Math.sqrt(Math.pow(coords[0] - cx, 2) + Math.pow(coords[1] - cy, 2)),
-
-              });
-            }
-          });
-
-
-        });
-      });
+  // --- Mouse interaction ---
+  svg.on('mousemove', (event) => {
+    const [mx, my] = d3.pointer(event);
+    let minDist = Infinity, nearest = null;
+    allPositions.forEach(p => {
+      const dx = p.x - mx, dy = p.y - my;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < minDist) { minDist = d; nearest = p; }
     });
 
+    const dx = mx - cx, dy = my - cy;
+    const distToCenter = Math.sqrt(dx*dx + dy*dy);
+    const minRadius = 2;
+    const circleRadius = Math.max(minRadius, distToCenter);
+    const snapThreshold = 8;
 
-  })})
-}).call(this);
+    if (nearest && minDist <= snapThreshold) {
+      yellowLine
+        .attr('x1', cx)
+        .attr('y1', cy)
+        .attr('x2', nearest.x)
+        .attr('y2', nearest.y);
+      yellowCircle.attr('r', Math.max(minRadius, Math.sqrt((nearest.x-cx)**2 + (nearest.y-cy)**2)));
+    } else {
+      yellowCircle.attr('r', circleRadius);
+      const scale = Math.max(width, height) * 2 / (distToCenter || 1);
+      yellowLine
+        .attr('x1', cx)
+        .attr('y1', cy)
+        .attr('x2', cx + dx*scale)
+        .attr('y2', cy + dy*scale);
+    }
+  });
 
+})();
