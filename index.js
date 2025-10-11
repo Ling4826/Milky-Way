@@ -169,10 +169,7 @@
             x: coords[0],
             y: coords[1],
             dist: distFromCenter,
-            type: "moon",
-            id: d.id
           });
-
           map.append('circle')
             .attr('cx', coords[0])
             .attr('cy', coords[1])
@@ -180,6 +177,72 @@
             .attr('fill', '#ffff00')
             .attr('stroke', '#448')
             .attr('stroke-width', 1);
+        }
+      });
+    });
+
+    d3.json('comet_api.php', function (error, cometData) {
+      if (error) throw error;
+      var cx = width / 2, cy = height / 2;
+      cometData.forEach(function (d) {
+        var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
+        var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
+        var coords = projection([lon, lat]);
+        if (coords) {
+          var dx = coords[0] - cx, dy = coords[1] - cy;
+          var distFromCenter = Math.sqrt(dx * dx + dy * dy);
+          allPositions.push({
+            x: coords[0],
+            y: coords[1],
+            dist: distFromCenter,
+          });
+
+          map.append('circle')
+            .attr('cx', coords[0])
+            .attr('cy', coords[1])
+            .attr('r', 6)  // ดาวหางใหญ่กว่าดวงจันทร์หน่อย
+            .attr('fill', '#00ffff') // สีฟ้า-เขียวสว่างสำหรับดาวหาง
+            .attr('stroke', '#088')
+            .attr('stroke-width', 2);
+        }
+      });
+    });
+    d3.json('nebula_api.php', function (error, nebulaData) {
+      if (error) throw error;
+      var cx = width / 2, cy = height / 2;
+      nebulaData.forEach(function (d) {
+        var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
+        var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
+        var coords = projection([lon, lat]);
+        if (coords) {
+          var dx = coords[0] - cx, dy = coords[1] - cy;
+          var distFromCenter = Math.sqrt(dx * dx + dy * dy);
+          allPositions.push({
+            x: coords[0],
+            y: coords[1],
+            dist: distFromCenter,
+          });
+          var defs = svg.append("defs");
+          var filter = defs.append("filter")
+            .attr("id", "glow");
+          filter.append("feGaussianBlur")
+            .attr("stdDeviation", "8") // ปรับค่าความกว้างของ blur
+            .attr("result", "coloredBlur");
+          var feMerge = filter.append("feMerge");
+          feMerge.append("feMergeNode")
+            .attr("in", "coloredBlur");
+          feMerge.append("feMergeNode")
+            .attr("in", "SourceGraphic");
+
+          // วาดวงกลมแล้วใช้ filter glow ที่สร้างไว้
+          map.append('circle')
+            .attr('cx', coords[0])
+            .attr('cy', coords[1])
+            .attr('r', 16) // ใหญ่กว่าปกติ
+            .attr('fill', '#00ffff')
+            .attr('stroke', '#088')
+            .attr('stroke-width', 2)
+            .style('filter', 'url(#glow)');
         }
       });
     });
@@ -276,9 +339,12 @@
       if (error2) throw error2;
       d3.json('moon_api.php', function (error3, moonData) {
         if (error3) throw error3;
-
-        var allPositions = [];
-        var cx = width / 2, cy = height / 2;
+        d3.json('comet_api.php', function (error4, cometData) {
+          if (error4) throw error4;
+          d3.json('nebula_api.php', function (error5, nebulaData) {
+          if (error5) throw error5;
+          var allPositions = [];
+          var cx = width / 2, cy = height / 2;
 
         // --- วาดและเก็บตำแหน่งดาวฤกษ์ ---
         map.selectAll('.star')
@@ -306,45 +372,85 @@
             alert('Clicked star ID:', d.id);
           });
 
-        var planetGroup = map.selectAll('.planet-group')
-          .data(planetData)
-          .enter().append('g')
-          .attr('class', 'planet-group')
-          .attr('transform', function (d) {
-            var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
-            var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
+          var planetGroup = map.selectAll('.planet-group')
+            .data(planetData)
+            .enter().append('g')
+            .attr('class', 'planet-group')
+            .attr('transform', function (d) {
+              var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
+              var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
+              var coords = projection([lon, lat]);
+              return coords ? 'translate(' + coords[0] + ',' + coords[1] + ')' : null;
+            });
+
+          // วาด planet ด้วยตำแหน่งจาก planet API ตามปกติใน group
+          planetGroup.append('circle')
+            .attr('r', 8)
+            .attr('fill', '#ff0000ff')
+            .attr('stroke', '#44f')
+            .attr('stroke-width', 2);
+
+          // วาด moon ตำแหน่งจริงจาก moon API แบบ absolute (ไม่ต้องเป็นลูกแต่ละ planetGroup ก็ได้)
+          moonData.forEach(function (moon) {
+            var lat = +moon.dec_deg + +moon.dec_min / 60 + +moon.dec_sec / 3600;
+            var lon = (+moon.RA_hour + +moon.RA_minute / 60 + +moon.RA_second / 3600) * (360 / 24);
             var coords = projection([lon, lat]);
-            return coords ? 'translate(' + coords[0] + ',' + coords[1] + ')' : null;
+            if (coords) {
+              map.append('circle')
+                .attr('cx', coords[0])
+                .attr('cy', coords[1])
+                .attr('r', 4)
+                .attr('fill', '#fff')
+                .attr('stroke', '#888')
+                .attr('stroke-width', 1);
+            }
+          });
+          cometData.forEach(function (comet) {
+            var lat = +comet.dec_deg + +comet.dec_min / 60 + +comet.dec_sec / 3600;
+            var lon = (+comet.RA_hour + +comet.RA_minute / 60 + +comet.RA_second / 3600) * (360 / 24);
+            var coords = projection([lon, lat]);
+            if (coords) {
+              // เก็บใน allPositions เพื่อใช้ฟีเจอร์เช่น snap หรือ highlight ได้
+              allPositions.push({
+                x: coords[0],
+                y: coords[1],
+                dist: Math.sqrt(Math.pow(coords[0] - cx, 2) + Math.pow(coords[1] - cy, 2)),
+                type: "comet",
+                id: comet.comet_id ?? comet.id // ใช้ key ที่ส่งมาจาก API
+              });
+
+              // วาดด้วย style เฉพาะของดาวหาง
+              map.append('circle')
+                .attr('cx', coords[0])
+                .attr('cy', coords[1])
+                .attr('r', 6) // ให้ใหญ่กว่าดวงจันทร์
+                .attr('fill', '#00ffff') // สีฟ้า-เขียว
+                .attr('stroke', '#088')
+                .attr('stroke-width', 2)
+                .attr('class', 'comet');
+            }
+          });
+          console.log(nebulaData);
+          nebulaData.forEach(function (nebula) {
+            var lat = +nebula.dec_deg + +nebula.dec_min / 60 + +nebula.dec_sec / 3600;
+            var lon = (+nebula.RA_hour + +nebula.RA_minute / 60 + +nebula.RA_second / 3600) * (360 / 24);
+            var coords = projection([lon, lat]);
+            if (coords) {
+              allPositions.push({
+                x: coords[0],
+                y: coords[1],
+                dist: Math.sqrt(Math.pow(coords[0] - cx, 2) + Math.pow(coords[1] - cy, 2)),
+
+              });
+            }
           });
 
-        // วาด planet ด้วยตำแหน่งจาก planet API ตามปกติใน group
-        planetGroup.append('circle')
-          .attr('r', 8)
-          .attr('fill', '#ff0000ff')
-          .attr('stroke', '#44f')
-          .attr('stroke-width', 2);
 
-        // วาด moon ตำแหน่งจริงจาก moon API แบบ absolute (ไม่ต้องเป็นลูกแต่ละ planetGroup ก็ได้)
-        moonData.forEach(function (moon) {
-          var lat = +moon.dec_deg + +moon.dec_min / 60 + +moon.dec_sec / 3600;
-          var lon = (+moon.RA_hour + +moon.RA_minute / 60 + +moon.RA_second / 3600) * (360 / 24);
-          var coords = projection([lon, lat]);
-          if (coords) {
-            map.append('circle')
-              .attr('cx', coords[0])
-              .attr('cy', coords[1])
-              .attr('r', 4)
-              .attr('fill', '#fff')
-              .attr('stroke', '#888')
-              .attr('stroke-width', 1);
-          }
         });
-
-
       });
     });
-  });
 
 
+  })})
 }).call(this);
 
