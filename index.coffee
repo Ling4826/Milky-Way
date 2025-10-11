@@ -105,7 +105,7 @@ d3.json('stars_api.php', function(error, data) {
       var coords = projection_austral([lon, lat]);
       return coords ? "translate(" + coords[0] + "," + coords[1] + ")" : null;
     });
-    con
+    
 });
 
 d3.json('planet_api.php', function(error, planetdata) {
@@ -137,37 +137,27 @@ d3.json('planet_api.php', function(error, planetdata) {
 
 d3.json('moon_api.php', function(error, moondata) {
   if (error) throw error;
-  // array moondata มีข้อมูลพร้อมพิกัดแล้ว
-  var allPositions_boreal = [], allPositions_austral = [];
-  moondata.forEach(function(d) {
-    var lat = +d.dec_deg + +d.dec_min/60 + +d.dec_sec/3600;
-    var lon = (+d.RA_hour + +d.RA_minute/60 + +d.RA_second/3600)*(360/24);
-    var coords_boreal = projection_boreal([lon, lat]);
-    var coords_austral = projection_austral([lon, lat]);
-    if(+d.dec_deg > 0 && coords_boreal) {
-      // ซีกเหนือ
-      allPositions_boreal.push({x: coords_boreal[0], y: coords_boreal[1], dist: Math.sqrt(Math.pow(coords_boreal[0]-cx,2)+Math.pow(coords_boreal[1]-cy,2))});
-      map_boreal.append('circle')
-        .attr('class', 'moon')
-        .attr('cx', coords_boreal[0])
-        .attr('cy', coords_boreal[1])
-        .attr('r', 4)
-        .attr('fill', '#fff')
-        .attr('stroke', '#888')
-        .attr('stroke-width', 1);
-    }
-    if(+d.dec_deg <= 0 && coords_austral) {
-      // ซีกใต้
-      allPositions_austral.push({x: coords_austral[0], y: coords_austral[1], dist: Math.sqrt(Math.pow(coords_austral[0]-cx,2)+Math.pow(coords_austral[1]-cy,2))});
-      map_austral.append('circle')
-        .attr('class', 'moon')
-        .attr('cx', coords_austral[0])
-        .attr('cy', coords_austral[1])
-        .attr('r', 4)
-        .attr('fill', '#fff')
-        .attr('stroke', '#888')
-        .attr('stroke-width', 1);
-    }
+      map_boreal.selectAll('.moon')
+    .data(planetdata.filter(function(d){ return +d.dec_deg > 0; }))
+    .enter().append('circle')
+    .attr('class', 'moon')
+    .attr('transform', function(d) {
+      var lat = +d.dec_deg + +d.dec_min/60 + +d.dec_sec/3600;
+      var lon = (+d.RA_hour + +d.RA_min/60 + +d.RA_sec/3600)*(360/24);
+      var coords = projection_boreal([lon, lat]);
+      return coords ? "translate(" + coords[0] + "," + coords[1] + ")" : null;
+
+       map_austral.selectAll('.moon')
+    .data(planetdata.filter(function(d){ return +d.dec_deg <= 0; }))
+    .enter().append('circle')
+    .attr('class', 'moon')
+    .attr('transform', function(d) {
+      var lat = +d.dec_deg + +d.dec_min/60 + +d.dec_sec/3600;
+      var lon = (+d.RA_hour + +d.RA_min/60 + +d.RA_sec/3600)*(360/24);
+      var coords = projection_austral([lon, lat]);
+      return coords ? "translate(" + coords[0] + "," + coords[1] + ")" : null;
+    })
+    
   });
 });
 
