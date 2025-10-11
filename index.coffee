@@ -137,7 +137,7 @@ d3.json('planet_api.php', function(error, planetdata) {
 
 d3.json('moon_api.php', function(error, moondata) {
   if (error) throw error;
-      map_boreal.selectAll('.moon')
+      map_boreal.selectAll('moon')
     .data(planetdata.filter(function(d){ return +d.dec_deg > 0; }))
     .enter().append('circle')
     .attr('class', 'moon')
@@ -147,10 +147,38 @@ d3.json('moon_api.php', function(error, moondata) {
       var coords = projection_boreal([lon, lat]);
       return coords ? "translate(" + coords[0] + "," + coords[1] + ")" : null;
 
-       map_austral.selectAll('.moon')
+
+       map_austral.selectAll('moon')
     .data(planetdata.filter(function(d){ return +d.dec_deg <= 0; }))
-    .enter().append('circle')
+    .enter().append('g')
     .attr('class', 'moon')
+    .attr('transform', function(d) {
+      var lat = +d.dec_deg + +d.dec_min/60 + +d.dec_sec/3600;
+      var lon = (+d.RA_hour + +d.RA_min/60 + +d.RA_sec/3600)*(360/24);
+      var coords = projection_austral([lon, lat]);
+      return coords ? "translate(" + coords[0] + "," + coords[1] + ")" : null;
+    })
+    
+  });
+});
+
+d3.json('nebula_api.php', function(error,nebuladata) {
+  if (error) throw error;
+      map_boreal.selectAll('nebula')
+    .data(nebuladata.filter(function(d){ return +d.dec_deg > 0; }))
+    .enter().append('circle')
+    .attr('class', 'nebula')
+    .attr('transform', function(d) {
+      var lat = +d.dec_deg + +d.dec_min/60 + +d.dec_sec/3600;
+      var lon = (+d.RA_hour + +d.RA_min/60 + +d.RA_sec/3600)*(360/24);
+      var coords = projection_boreal([lon, lat]);
+      return coords ? "translate(" + coords[0] + "," + coords[1] + ")" : null;
+
+
+       map_austral.selectAll('nebula')
+    .data(nebuladata.filter(function(d){ return +d.dec_deg <= 0; }))
+    .enter().append('g')
+    .attr('class', 'nebula')
     .attr('transform', function(d) {
       var lat = +d.dec_deg + +d.dec_min/60 + +d.dec_sec/3600;
       var lon = (+d.RA_hour + +d.RA_min/60 + +d.RA_sec/3600)*(360/24);
