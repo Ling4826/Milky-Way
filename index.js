@@ -2,6 +2,22 @@
   var graticule, height, magnitude, map, maps, path_generator, projection, svg, width, zoom;
 
   svg = d3.select('svg');
+  zoom = d3.behavior.zoom()
+  .scaleExtent([1, 10])
+  .on("zoom", zoomed);
+svg.call(zoom);
+  maps = svg.append('g');
+map = maps.append('g').attr('id', 'map_combined');
+
+  function zoomed() {
+  // D3 v3:
+  maps.attr("transform",
+    "translate(" + d3.event.translate + ") scale(" + d3.event.scale + ")");
+
+  // ถ้า D3 v4/v5:
+  // maps.attr("transform", d3.event.transform); // event.transform มีทั้ง translate และ scale
+}
+
 
   width = svg[0][0].getBoundingClientRect().width;
   height = svg[0][0].getBoundingClientRect().height;
@@ -340,5 +356,5 @@
   });
 
 
-
 }).call(this);
+
