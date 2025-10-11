@@ -1,27 +1,34 @@
-body {
+.body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   height: 100vh;
   margin: 0;
-  background: radial-gradient(ellipse at center, #1a2736 0%, #0a1016 100%);
+  background: radial-gradient(ellipse at center, #000000 0%, #000000 100%);
 }
 
 svg {
-  position: absolute;
+  display: block;
+  margin: auto;
+   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   background: none;
 }
 
+
+
+
 .graticule {
   fill: none;
-  stroke: white;
-  stroke-width: 0.2px;
-  vector-effect: non-scaling-stroke;
+  stroke: #fff;
+  stroke-width: 0.7px;
   opacity: 0.5;
 }
 
 .star {
-  fill: white;
+  fill: #fff;
   opacity: 1;
   stroke: none;
 }
@@ -51,6 +58,33 @@ line.grid-tick {
   stroke-width: 0.7px;
   opacity: 0.5;
 }
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
+
+svg {
+  display: block;
+  margin: auto;
+}
+body {
+  background: #1a055c;
+}
+
+.star {
+  fill: white;
+}
+
+.graticule {
+  fill: none;
+  stroke: white;
+  stroke-width: 0.2px;
+  vector-effect: non-scaling-stroke;
+}
+
 
 .bg {
     background: url(galaxy.jpg) no-repeat;
@@ -62,6 +96,7 @@ line.grid-tick {
     left: 0;
     z-index: -3;
 }
+
 .bg:before {
     content: "";
     width: 100%;
@@ -103,7 +138,7 @@ line.grid-tick {
         opacity: 0.5;
     }
 }
-.star-field {
+/* .star-field {
     position: fixed;
     top: 0;
     left: 0;
@@ -112,7 +147,7 @@ line.grid-tick {
     perspective: 600px;
     -webkit-perspective: 600px;
     z-index: -1;
-}
+} */
 .star-field .layer {
     box-shadow: -411px -476px #cccccc, 777px -407px #d4d4d4, -387px -477px #fcfcfc, -91px -235px #d4d4d4, 491px -460px #f7f7f7, 892px -128px #f7f7f7, 758px -277px #ededed, 596px 378px #cccccc, 647px 423px whitesmoke, 183px 389px #c7c7c7,
         524px -237px #f0f0f0, 679px -535px #e3e3e3, 158px 399px #ededed, 157px 249px #ededed, 81px -450px #ebebeb, 719px -360px #c2c2c2, -499px 473px #e8e8e8, -158px -349px #d4d4d4, 870px -134px #cfcfcf, 446px 404px #c2c2c2,
@@ -156,3 +191,4 @@ header {
     z-index: 10;
     box-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
+

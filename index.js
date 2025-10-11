@@ -134,18 +134,18 @@
           map.append('circle')
             .attr('cx', coords[0])
             .attr('cy', coords[1])
-            .attr('r', 8)          
-            .attr('fill', '#ff0000ff')   
+            .attr('r', 8)
+            .attr('fill', '#ff0000ff')
             .attr('stroke', '#44f')
             .attr('stroke-width', 2);
 
           map.append('circle')
             .attr('cx', coords[0])
             .attr('cy', coords[1])
-            .attr('r', 13)          
-            .attr('fill', 'none')    
-            .attr('stroke', '#44f')  
-            .attr('stroke-width', 1); 
+            .attr('r', 13)
+            .attr('fill', 'none')
+            .attr('stroke', '#44f')
+            .attr('stroke-width', 1);
 
         }
       });
@@ -153,23 +153,30 @@
     });
 
     d3.json('moon_api.php', function (error, moonData) {
-  if (error) throw error;
-  var cx = width / 2, cy = height / 2;
-  moonData.forEach(function (d) {
-    var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
-    var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
-    var coords = projection([lon, lat]);
-    if (coords) {
-      map.append('circle')
-        .attr('cx', coords[0])
-        .attr('cy', coords[1])
-        .attr('r', 4)                  // <<< เปลี่ยนรัศมีจุดเล็ก
-        .attr('fill', '#ffff00')       // <<< สีเหลืองหรือสีขาว
-        .attr('stroke', '#448')
-        .attr('stroke-width', 1);
-    }
-  });
-});
+      if (error) throw error;
+      var cx = width / 2, cy = height / 2;
+      moonData.forEach(function (d) {
+        var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
+        var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
+
+        var coords = projection([lon, lat]);
+        console.log("moon : ", lat, lon, coords);
+        if (coords) {
+          var dx = coords[0] - cx, dy = coords[1] - cy;
+          var distFromCenter = Math.sqrt(dx * dx + dy * dy);
+
+          allPositions.push({ x: coords[0], y: coords[1], dist: distFromCenter });
+
+          map.append('circle')
+            .attr('cx', coords[0])
+            .attr('cy', coords[1])
+            .attr('r', 4)
+            .attr('fill', '#ffff00')
+            .attr('stroke', '#448')
+            .attr('stroke-width', 1);
+        }
+      });
+    });
 
 
 
@@ -180,6 +187,7 @@
     // Set up mousemove handler after stars are loaded
     svg.on('mousemove', function () {
       var mouse = d3.mouse(this);
+
       var cx = width / 2, cy = height / 2;
       // Find nearest star to mouse
       var minDist = Infinity, nearest = null;
@@ -192,6 +200,7 @@
           nearest = p;
         }
       }
+
       // Calculate distance from mouse to center
       var dx = mouse[0] - cx, dy = mouse[1] - cy;
       var distToCenter = Math.sqrt(dx * dx + dy * dy);
@@ -201,6 +210,8 @@
       // Snap threshold (pixels). If the mouse is within this many pixels of a star, snap to it.
       var snapThreshold = 8;
       if (nearest && minDist <= snapThreshold) {
+        console.log('Type:', nearest.type);
+
         // Snap: set line end to star and circle radius to star's distance from center
         yellowLine
           .attr('x1', cx)
@@ -252,76 +263,109 @@
   magnitude = d3.scale.quantize().domain([-1, 5]).range([7, 6, 5, 4, 3, 2, 1]);
 
   // Draw all stars (both hemispheres) on the same projection
-
   d3.json('stars_api.php', function (error1, starData) {
-  if (error1) throw error1;
-  d3.json('planet_api.php', function (error2, planetData) {
-    if (error2) throw error2;
-    d3.json('moon_api.php', function (error3, moonData) {
-      if (error3) throw error3;
+    if (error1) throw error1;
+    d3.json('planet_api.php', function (error2, planetData) {
+      if (error2) throw error2;
+      d3.json('moon_api.php', function (error3, moonData) {
+        if (error3) throw error3;
 
-      // วาดดาวฤกษ์
-      map.selectAll('.star')
-        .data(starData)
-        .enter().append('circle')
-        .attr('class', 'star')
-        .attr('r', 3)
-        .attr('fill', 'gold')
-        .attr('transform', function (d) {
-          var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
-          var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
-          var coords = projection([lon, lat]);
-          return 'translate(' + coords[0] + ',' + coords[1] + ')';
+        var allPositions = [];
+        var cx = width / 2, cy = height / 2;
+
+        // --- วาดและเก็บตำแหน่งดาวฤกษ์ ---
+        map.selectAll('.star')
+          .data(starData)
+          .enter().append('circle')
+          .attr('class', 'star')
+          .attr('r', 3)
+          .attr('fill', 'gold')
+          .attr('transform', function (d) {
+            var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
+            var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
+            var coords = projection([lon, lat]);
+            if (coords) {
+              allPositions.push({
+                x: coords[0],
+                y: coords[1],
+                type: 'star',
+                id: d.id
+              });
+              return 'translate(' + coords[0] + ',' + coords[1] + ')';
+            }
+            return null;
+          });
+
+        // --- วาด planet group ---
+        var planetGroup = map.selectAll('.planet-group')
+          .data(planetData)
+          .enter().append('g')
+          .attr('class', 'planet-group')
+          .attr('transform', function (d) {
+            var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
+            var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
+            var coords = projection([lon, lat]);
+            if (coords) {
+              allPositions.push({
+                x: coords[0],
+                y: coords[1],
+                type: 'planet',
+                id: d.id
+              });
+              return 'translate(' + coords[0] + ',' + coords[1] + ')';
+            }
+            return null;
+          });
+
+        planetGroup.append('circle')
+          .attr('r', 8)
+          .attr('fill', '#ff0000ff')
+          .attr('stroke', '#44f')
+          .attr('stroke-width', 2);
+
+        planetGroup.append('circle')
+          .attr('r', 13)
+          .attr('fill', 'none')
+          .attr('stroke', '#44f')
+          .attr('stroke-width', 1);
+
+        // --- วาด moon orbit รอบ planet + เก็บ absolute ---
+        planetGroup.each(function (planet) {
+          var moons = moonData.filter(function (m) {
+            return m.planet_id == planet.id;
+          });
+          var lat = +planet.dec_deg + +planet.dec_min / 60 + +planet.dec_sec / 3600;
+          var lon = (+planet.RA_hour + +planet.RA_minute / 60 + +planet.RA_second / 3600) * (360 / 24);
+          var coords = projection([lon, lat]); // planet center absolute
+          moons.forEach(function (moon, k) {
+            var angle = k * (2 * Math.PI / moons.length);
+            var moonRadius = 20;
+            var mx = Math.cos(angle) * moonRadius;
+            var my = Math.sin(angle) * moonRadius;
+            d3.select(this)
+              .append('circle')
+              .attr('cx', mx)
+              .attr('cy', my)
+              .attr('r', 4)
+              .attr('fill', '#fff')
+              .attr('stroke', '#888')
+              .attr('stroke-width', 1);
+            if (coords) {
+              allPositions.push({
+                x: coords[0] + mx,
+                y: coords[1] + my,
+                type: 'moon',
+                planet_id: planet.id,
+                moon_id: moon.id
+              });
+            }
+          }, this);
         });
 
-      // วาด planet และเติม moon
-      var planetGroup = map.selectAll('.planet-group')
-        .data(planetData)
-        .enter().append('g')
-        .attr('class', 'planet-group')
-        .attr('transform', function (d) {
-          var lat = +d.dec_deg + +d.dec_min / 60 + +d.dec_sec / 3600;
-          var lon = (+d.RA_hour + +d.RA_minute / 60 + +d.RA_second / 3600) * (360 / 24);
-          var coords = projection([lon, lat]);
-          return 'translate(' + coords[0] + ',' + coords[1] + ')';
-        });
-
-      planetGroup.append('circle')
-        .attr('r', 8)
-        .attr('fill', '#ff0000ff')
-        .attr('stroke', '#44f')
-        .attr('stroke-width', 2);
-
-      planetGroup.append('circle')
-        .attr('r', 13)
-        .attr('fill', 'none')
-        .attr('stroke', '#44f')
-        .attr('stroke-width', 1);
-
-      planetGroup.each(function(planet) {
-        var moons = moonData.filter(function(m) {
-          return m.planet_id == planet.id;
-        });
-
-        moons.forEach(function(moon, k) {
-          var angle = k * (2 * Math.PI / moons.length);
-          var moonRadius = 20; 
-          var mx = Math.cos(angle) * moonRadius;
-          var my = Math.sin(angle) * moonRadius;
-
-          d3.select(this)
-            .append('circle')
-            .attr('cx', mx)
-            .attr('cy', my)
-            .attr('r', 4)
-            .attr('fill', '#fff')
-            .attr('stroke', '#888')
-            .attr('stroke-width', 1);
-        }, this);
       });
     });
   });
-});
 
-  
+
+
 }).call(this);
